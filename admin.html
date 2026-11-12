@@ -53,6 +53,7 @@
         <input type="search" id="oSearch" placeholder="ابحث بالاسم أو الموبايل أو المدينة">
         <select id="oFilter" aria-label="فلتر الحالة"></select>
         <button class="btn btn--ghost btn--sm" id="oReload">تحديث</button>
+        <button class="btn btn--danger btn--sm" id="oDeleteShown">مسح المعروض</button>
       </div>
       <p class="msg" id="oMsg" role="status"></p>
       <div class="orders" id="orders"></div>
@@ -81,7 +82,9 @@
         <label class="btn btn--ghost btn--sm filebtn">رفع صورة
           <input type="file" id="pFile" accept="image/webp,image/png,image/jpeg" hidden>
         </label>
-        <p class="hint">يفضّل webp أو png شفاف. حد أقصى 3 ميجا.</p>
+        <p class="hint">حد أقصى 8 ميجا. بتتصغّر وتتحوّل لـ webp تلقائي.</p>
+        <label class="check check--sm"><input type="checkbox" id="fRemoveBg" checked> إزالة الخلفية تلقائياً</label>
+        <p class="hint" id="pImgStatus" role="status"></p>
       </div>
     </div>
     <div class="grid2">

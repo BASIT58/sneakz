@@ -135,3 +135,8 @@ label.check input { width: 20px; min-height: 20px; accent-color: var(--accent); 
   .top__end { margin-inline-start: 0; }
   .order__time { margin-inline-start: 0; width: 100%; }
 }
+
+.check--sm { font-size: 13px; margin-top: 8px; }
+.order__foot .grow { flex: 1; }
+.progress { height: 4px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }

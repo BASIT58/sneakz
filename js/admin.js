@@ -142,6 +142,8 @@
         </div>
         <div class="order__foot">
           <select data-act="status" aria-label="حالة الطلب">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === st ? "selected" : ""}>${v}</option>`).join("")}</select>
+          <span class="grow"></span>
+          <button class="btn btn--danger btn--sm" data-act="del">مسح</button>
           ${phone ? `<a class="btn btn--ghost btn--sm wa" target="_blank" rel="noopener" href="https://wa.me/${phone}">واتساب</a><a class="btn btn--ghost btn--sm" href="tel:+${phone}">اتصال</a>` : ""}
         </div>
       </article>`;
@@ -156,6 +158,28 @@
       await api("/rest/v1/orders?id=eq." + encodeURIComponent(id), { method: "PATCH", json: { status: val }, headers: { Prefer: "return=minimal" } });
       o.status = val; renderOrders();
     } catch (ex) { sel.value = old; $("oMsg").textContent = "ما اتحفظش: " + ex.message; }
+  });
+  $("orders").addEventListener("click", async (e) => {
+    const b = e.target.closest('[data-act="del"]'); if (!b) return;
+    const id = b.closest(".order").dataset.id;
+    if (!confirm("تمسح الطلب ده نهائياً؟")) return;
+    try {
+      await api("/rest/v1/orders?id=eq." + encodeURIComponent(id), { method: "DELETE", headers: { Prefer: "return=minimal" } });
+      orders = orders.filter((x) => String(x.id) !== id); renderOrders();
+    } catch (ex) { $("oMsg").textContent = "ما اتمسحش: " + ex.message; }
+  });
+  $("oDeleteShown").addEventListener("click", async () => {
+    const q = $("oSearch").value.trim().toLowerCase(), st = $("oFilter").value;
+    const list = orders.filter((o) => (!st || o.status === st) &&
+      (!q || [f(o, "name", "customer_name"), f(o, "phone"), f(o, "city")].join(" ").toLowerCase().includes(q)));
+    if (!list.length) { $("oMsg").textContent = "مفيش طلبات معروضة."; return; }
+    if (!confirm("هتمسح " + list.length + " طلب نهائياً (الطلبات المعروضة دلوقتي حسب الفلتر). متأكد؟")) return;
+    try {
+      const ids = list.map((o) => String(o.id).replace(/[^\w-]/g, ""));
+      await api("/rest/v1/orders?id=in.(" + ids.join(",") + ")", { method: "DELETE", headers: { Prefer: "return=minimal" } });
+      orders = orders.filter((o) => !ids.includes(String(o.id))); renderOrders();
+      $("oMsg").textContent = "اتمسح " + ids.length + " طلب.";
+    } catch (ex) { $("oMsg").textContent = "ما اتمسحش: " + ex.message; }
   });
   $("oSearch").addEventListener("input", renderOrders);
   $("oFilter").addEventListener("change", renderOrders);
@@ -180,9 +204,10 @@
 
   const modal = $("pModal");
   let pendingImage = "";
+  let uploadedThisSession = "";
 
   function openForm(p) {
-    editing = p; pendingImage = p ? p.image : "";
+    editing = p; pendingImage = p ? p.image : ""; uploadedThisSession = ""; $("pImgStatus").textContent = "";
     $("pTitle").textContent = p ? "تعديل: " + p.name_ar : "منتج جديد";
     $("fNameAr").value = p ? p.name_ar : ""; $("fNameEn").value = p ? p.name_en : "";
     $("fPrice").value = p ? p.price : ""; $("fCat").value = p ? p.cat : "classic";
@@ -194,23 +219,68 @@
     $("pErr").hidden = true; $("pDelete").hidden = !p;
     modal.showModal();
   }
-  $("pCancel").addEventListener("click", () => modal.close());
+  $("pCancel").addEventListener("click", () => { if (uploadedThisSession && uploadedThisSession !== (editing && editing.image)) deleteStored(uploadedThisSession); modal.close(); });
+
+  /* ---------- معالجة الصورة: إزالة الخلفية + تصغير + webp ---------- */
+  const MAX_W = 1000;
+  let bgLib = null;
+  const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+
+  async function removeBg(file, onProgress) {
+    // مكتبة بتشتغل جوه المتصفح (من غير مفتاح ولا سيرفر). الموديل بيتحمّل أول مرة بس وبعدها بيتخزّن.
+    if (!bgLib) bgLib = await import("https://esm.sh/@imgly/background-removal@1.5.5");
+    return bgLib.removeBackground(file, { output: { format: "image/png" }, progress: onProgress });
+  }
+
+  async function toWebp(blob) {
+    const bmp = await createImageBitmap(blob);
+    const k = Math.min(1, MAX_W / bmp.width);
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+    return new Promise((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error("فشل تحويل الصورة"))), "image/webp", 0.88));
+  }
+
+  const BUCKET_URL = () => URL_ + "/storage/v1/object/public/products/";
+  async function deleteStored(url) {
+    if (!url || !String(url).startsWith(BUCKET_URL())) return;
+    const name = String(url).slice(BUCKET_URL().length);
+    try { await fetch(URL_ + "/storage/v1/object/products/" + encodeURIComponent(name), { method: "DELETE", headers: { apikey: KEY, Authorization: "Bearer " + session.access } }); } catch {}
+  }
 
   $("pFile").addEventListener("change", async (e) => {
     const file = e.target.files[0]; if (!file) return;
-    const err = $("pErr"); err.hidden = true;
-    if (file.size > 3 * 1024 * 1024) { err.textContent = "الصورة أكبر من 3 ميجا."; err.hidden = false; return; }
-    const ext = (file.name.split(".").pop() || "webp").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const name = "p" + Date.now() + "." + ext;
+    const err = $("pErr"), stat = $("pImgStatus"); err.hidden = true; stat.textContent = "";
+    if (!/^image\//.test(file.type)) { err.textContent = "الملف ده مش صورة."; err.hidden = false; return; }
+    if (file.size > 8 * 1024 * 1024) { err.textContent = "الصورة أكبر من 8 ميجا."; err.hidden = false; return; }
     $("pSave").disabled = true;
     try {
+      let blob = file;
+      if ($("fRemoveBg").checked) {
+        stat.textContent = "جاري إزالة الخلفية... (أول مرة بتاخد وقت لأن الموديل بيتحمّل)";
+        try {
+          blob = await withTimeout(removeBg(file, (key, cur, total) => {
+            if (String(key).startsWith("fetch") && total) stat.textContent = "تحميل الموديل " + Math.round((cur / total) * 100) + "% (مرة واحدة بس)";
+            else stat.textContent = "جاري إزالة الخلفية...";
+          }), 180000, "الوقت خلص");
+        } catch (ex) {
+          blob = file; stat.textContent = "";
+          err.textContent = "إزالة الخلفية ما نفعتش (" + ex.message + "). هترفع الصورة زي ما هي.";
+          err.hidden = false;
+        }
+      }
+      stat.textContent = "جاري التصغير والرفع...";
+      const out = await toWebp(blob);
+      const name = "p" + Date.now() + ".webp";
       const r = await fetch(URL_ + "/storage/v1/object/products/" + name, {
-        method: "POST", headers: { apikey: KEY, Authorization: "Bearer " + session.access, "Content-Type": file.type, "x-upsert": "true" }, body: file,
+        method: "POST", headers: { apikey: KEY, Authorization: "Bearer " + session.access, "Content-Type": "image/webp", "x-upsert": "true" }, body: out,
       });
       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || "فشل رفع الصورة"); }
-      pendingImage = URL_ + "/storage/v1/object/public/products/" + name;
+      if (uploadedThisSession && uploadedThisSession !== editing?.image) deleteStored(uploadedThisSession);
+      uploadedThisSession = pendingImage = BUCKET_URL() + name;
       $("pPreview").src = pendingImage;
-    } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+      stat.textContent = "الصورة جاهزة (" + Math.round(out.size / 1024) + " كيلو).";
+    } catch (ex) { err.textContent = ex.message; err.hidden = false; stat.textContent = ""; }
     finally { $("pSave").disabled = false; }
   });
 
@@ -236,6 +306,8 @@
         row.slug = nameEn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item-" + row.id;
         await api("/rest/v1/products", { method: "POST", json: row, headers: { Prefer: "return=minimal" } });
       }
+      if (editing && editing.image !== pendingImage) deleteStored(editing.image);
+      uploadedThisSession = "";
       modal.close();
       products = await api("/rest/v1/products?select=*&order=sort.asc,id.asc");
       renderProducts(); renderOrders();
@@ -248,10 +320,14 @@
     if (!editing || !confirm("متأكد إنك عايز تمسح «" + editing.name_ar + "»؟ لو في طلبات عليه الأحسن تخفيه بدل ما تمسحه.")) return;
     try {
       await api("/rest/v1/products?id=eq." + encodeURIComponent(editing.id), { method: "DELETE", headers: { Prefer: "return=minimal" } });
+      deleteStored(editing.image);
       modal.close();
       products = products.filter((p) => p.id !== editing.id);
       renderProducts(); $("pMsg").textContent = "اتمسح.";
-    } catch (ex) { $("pErr").textContent = ex.message; $("pErr").hidden = false; }
+    } catch (ex) {
+      $("pErr").textContent = /foreign key|violates/i.test(ex.message) ? "في طلبات على المنتج ده فمش هينفع يتمسح. الغي علامة «ظاهر في الموقع» واحفظ عشان تخبّيه." : ex.message;
+      $("pErr").hidden = false;
+    }
   });
 
   /* ---------- بداية ---------- */
