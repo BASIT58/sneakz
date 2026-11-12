@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>SNEAKZ | لوحة الأدمن</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Readex+Pro:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<!-- تسجيل الدخول -->
+<main class="login" id="loginView">
+  <form class="login__card" id="loginForm" autocomplete="on">
+    <img src="assets/logo.webp" alt="SNEAKZ" class="login__logo" width="140" height="auto">
+    <h1>لوحة الأدمن</h1>
+    <label>الإيميل
+      <input type="email" id="lEmail" autocomplete="username" required dir="ltr">
+    </label>
+    <label>كلمة السر
+      <input type="password" id="lPass" autocomplete="current-password" required dir="ltr">
+    </label>
+    <p class="msg msg--err" id="loginErr" role="alert" hidden></p>
+    <button class="btn" type="submit" id="loginBtn">دخول</button>
+    <a class="back" href="index.html">الرجوع للموقع</a>
+  </form>
+</main>
+
+<!-- اللوحة -->
+<div class="app" id="appView" hidden>
+  <header class="top">
+    <img src="assets/logo.webp" alt="SNEAKZ" width="96" height="auto">
+    <nav class="tabs" role="tablist">
+      <button role="tab" class="tab is-on" data-tab="orders" aria-selected="true">الطلبات <span class="badge" id="newBadge" hidden>0</span></button>
+      <button role="tab" class="tab" data-tab="products" aria-selected="false">المنتجات</button>
+    </nav>
+    <div class="top__end">
+      <span class="who" id="who" dir="ltr"></span>
+      <button class="btn btn--ghost btn--sm" id="logoutBtn">خروج</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- الطلبات -->
+    <section id="tab-orders">
+      <div class="stats" id="stats"></div>
+      <div class="bar">
+        <input type="search" id="oSearch" placeholder="ابحث بالاسم أو الموبايل أو المدينة">
+        <select id="oFilter" aria-label="فلتر الحالة"></select>
+        <button class="btn btn--ghost btn--sm" id="oReload">تحديث</button>
+      </div>
+      <p class="msg" id="oMsg" role="status"></p>
+      <div class="orders" id="orders"></div>
+    </section>
+
+    <!-- المنتجات -->
+    <section id="tab-products" hidden>
+      <div class="bar">
+        <strong id="pCount"></strong>
+        <span class="grow"></span>
+        <button class="btn btn--sm" id="pNew">+ منتج جديد</button>
+      </div>
+      <p class="msg" id="pMsg" role="status"></p>
+      <div class="plist" id="plist"></div>
+    </section>
+  </main>
+</div>
+
+<!-- نموذج المنتج -->
+<dialog class="modal" id="pModal">
+  <form id="pForm" class="pform" method="dialog">
+    <h2 id="pTitle">منتج</h2>
+    <div class="pform__img">
+      <div class="thumb"><img id="pPreview" alt=""></div>
+      <div>
+        <label class="btn btn--ghost btn--sm filebtn">رفع صورة
+          <input type="file" id="pFile" accept="image/webp,image/png,image/jpeg" hidden>
+        </label>
+        <p class="hint">يفضّل webp أو png شفاف. حد أقصى 3 ميجا.</p>
+      </div>
+    </div>
+    <div class="grid2">
+      <label>الاسم (عربي)<input id="fNameAr" required></label>
+      <label>الاسم (إنجليزي)<input id="fNameEn" required dir="ltr"></label>
+      <label>السعر<input id="fPrice" type="number" min="1" step="1" required dir="ltr"></label>
+      <label>الفئة
+        <select id="fCat">
+          <option value="classic">كلاسيك</option>
+          <option value="running">رانينج</option>
+          <option value="hightop">هاي توب</option>
+          <option value="special">إصدارات خاصة</option>
+        </select>
+      </label>
+      <label>المقاسات (بفاصلة)<input id="fSizes" placeholder="40,41,42,43" required dir="ltr"></label>
+      <label>الترتيب<input id="fSort" type="number" step="1" dir="ltr"></label>
+    </div>
+    <label>الوصف (عربي)<textarea id="fDescAr" rows="2"></textarea></label>
+    <label>الوصف (إنجليزي)<textarea id="fDescEn" rows="2" dir="ltr"></textarea></label>
+    <label class="check"><input type="checkbox" id="fActive" checked> ظاهر في الموقع</label>
+    <p class="msg msg--err" id="pErr" role="alert" hidden></p>
+    <div class="actions">
+      <button class="btn" type="submit" id="pSave">حفظ</button>
+      <button class="btn btn--ghost" type="button" id="pCancel">إلغاء</button>
+      <span class="grow"></span>
+      <button class="btn btn--danger btn--sm" type="button" id="pDelete" hidden>حذف</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="js/data.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
