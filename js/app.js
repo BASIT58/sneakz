@@ -535,11 +535,11 @@
   function renderAll() { renderShelf(); renderMarquee(); startHeroCycle(); }
 
   /* الكوتشي الكبير في الهيرو بيتبدّل لوحده كل كام ثانية */
-  let heroTimer = null, heroIdx = 0;
+  let heroTimer = null, heroStart = null, heroIdx = 0;
   function startHeroCycle() {
     const stage = $("#heroStage"), img = $("#heroImg");
     if (!stage || !img || PRODUCTS.length < 2 || reduceMotion()) return;
-    clearInterval(heroTimer);
+    clearInterval(heroTimer); clearTimeout(heroStart);
     const cur = PRODUCTS.findIndex((p) => img.getAttribute("src") === p.image);
     heroIdx = cur >= 0 ? cur : 0;
     const preload = (src) => new Promise((res) => { const i = new Image(); i.onload = i.onerror = () => res(); i.src = src; });
@@ -559,7 +559,9 @@
       stage.classList.remove("is-in");
       busy = false;
     };
-    heroTimer = setInterval(next, 3200);
+    // نبدأ التبديل بعد ما الصفحة تخلص تحميل بكام ثانية، عشان ما ينافسش التحميل الأول
+    const begin = () => { heroStart = setTimeout(() => { heroTimer = setInterval(next, 3200); }, 4000); };
+    if (document.readyState === "complete") begin(); else window.addEventListener("load", begin, { once: true });
   }
 
   async function boot() {
