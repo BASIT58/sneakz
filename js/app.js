@@ -532,7 +532,35 @@
   try { state.lang = localStorage.getItem("sneakz_lang") || CFG.defaultLang; } catch (_) { state.lang = CFG.defaultLang; }
   if (!["ar", "en"].includes(state.lang)) state.lang = "ar";
 
-  function renderAll() { renderShelf(); renderMarquee(); }
+  function renderAll() { renderShelf(); renderMarquee(); startHeroCycle(); }
+
+  /* الكوتشي الكبير في الهيرو بيتبدّل لوحده كل كام ثانية */
+  let heroTimer = null, heroIdx = 0;
+  function startHeroCycle() {
+    const stage = $("#heroStage"), img = $("#heroImg");
+    if (!stage || !img || PRODUCTS.length < 2 || reduceMotion()) return;
+    clearInterval(heroTimer);
+    const cur = PRODUCTS.findIndex((p) => img.getAttribute("src") === p.image);
+    heroIdx = cur >= 0 ? cur : 0;
+    const preload = (src) => new Promise((res) => { const i = new Image(); i.onload = i.onerror = () => res(); i.src = src; });
+    let busy = false;
+    const next = async () => {
+      if (busy || document.hidden || document.body.classList.contains("is-locked")) return;
+      busy = true;
+      heroIdx = (heroIdx + 1) % PRODUCTS.length;
+      const src = PRODUCTS[heroIdx].image;
+      await preload(src);
+      stage.classList.add("is-out");
+      await delay(450);
+      img.src = src;
+      stage.classList.remove("is-out");
+      stage.classList.add("is-in");
+      void stage.offsetWidth;            // نجبر المتصفح يحسب الحالة قبل ما نرجّع الحركة
+      stage.classList.remove("is-in");
+      busy = false;
+    };
+    heroTimer = setInterval(next, 3200);
+  }
 
   async function boot() {
     enableSheetDrag();

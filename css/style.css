@@ -234,6 +234,10 @@ h1, h2, h3, p { margin: 0; }
 }
 [dir="rtl"] .hero__visual img { transform: rotate(8deg) scaleX(-1); }
 [dir="rtl"] .hero__visual img { animation-name: float-rtl; }
+/* تبديل الكوتشي في الهيرو لوحده: بيختفي وبيتزحلق وبعدين الجديد يدخل */
+.hero__stage { display: grid; place-items: center; width: 100%; transition: opacity .45s var(--ease, ease), translate .45s var(--ease, ease); }
+.hero__stage.is-out { opacity: 0; translate: -36px 0; }
+.hero__stage.is-in  { opacity: 0; translate: 36px 0; transition: none; }
 .hero__visual::after { /* ظل الأرضية */
   content: ""; position: absolute; bottom: 2%; width: 60%; height: 28px;
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), transparent 70%);
